@@ -37,13 +37,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { api } from "@/lib/api";
+import { getDateLocale } from "@/i18n/datetime";
+import { ApiError, api } from "@/lib/api";
 import type { Agent, MCPServer, MissingSkill, SkillCall, SkillItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 function fmtTime(ts: string | undefined, never: string) {
   if (!ts) return never;
-  return new Date(ts).toLocaleString("ko-KR", {
+  return new Date(ts).toLocaleString(getDateLocale(), {
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
@@ -399,9 +400,9 @@ export default function SkillsPage() {
       load();
     } catch (e) {
       const msg = (e as Error).message;
-      // offer overwrite when the skill already exists
-      // (server_mgmt.go errMgmtSkillExistsPre 와 짝 맞춘 교차 스택 마커)
-      if (!overwrite && msg.includes("이미 존재")) {
+      // offer overwrite when the skill already exists (server_mgmt.go 가 409 로 응답).
+      // 문구는 표시 언어에 따라 달라지므로 status 로 판정한다.
+      if (!overwrite && e instanceof ApiError && e.status === 409) {
         if (window.confirm(t("overwriteConfirm", { msg }))) {
           await uploadZip(file, true);
           return;
